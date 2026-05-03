@@ -81,3 +81,100 @@ Resolved runtime failures caused by stale background processes and LiveReload po
 - **Both `application.yaml`**: Added `spring.devtools.livereload.enabled: false` to eliminate port 35729 contention. Added `logging.level.com.jobqueue: DEBUG`.
 - **Verified**: `./start-all.sh` auto-clears stale processes, rebuilds, and confirms both services `UP` via `/actuator/health`.
 
+---
+
+## WEEK 7: Resilience Patterns
+
+### What
+Implemented `RetryHandler`, `WebhookClient` with Resilience4j, and `GracefulShutdown`.
+
+### How & Why
+- **`RetryHandler.java`** (`worker-service/application`): On job failure, calculates next retry time using `BackoffCalculator.calculateNextRetry()` and updates DB with `status=RETRY`, `next_retry_at`, `attempts`. Once `attempts >= maxRetries`, marks status `DEAD`.
+  - *Why*: Prevents runaway retry loops. Jittered backoff avoids thundering-herd when many jobs fail simultaneously.
+- **`WebhookClient.java`** (`worker-service/infrastructure/webhook`): `@CircuitBreaker(name="webhook")` from Resilience4j protects downstream webhook URLs. Circuit opens after 50% failure rate over 10 calls; fallback logs and queues for retry.
+  - *Why*: Downstream callback URLs are unreliable. Circuit breaker prevents cascading failures into the job executor thread pool.
+- **`GracefulShutdown.java`** (`worker-service/config`): `ApplicationListener<ContextClosedEvent>` — signals `QueuePoller.setRunning(false)` then polls `JobExecutor.getActiveCount()` every 1s, up to 30s.
+  - *Why*: Without graceful shutdown, in-flight jobs are interrupted mid-execution, leaving DB in `RUNNING` state permanently.
+- **`resilience4j.circuitbreaker.instances.webhook`** in `application.yaml`: `slidingWindowSize=10`, `failureRateThreshold=50`, `waitDurationInOpenState=30s`.
+
+---
+
+## WEEK 8: Worker Execution Engine
+
+### What
+Implemented the full worker execution pipeline: `HandlerRegistry` → `JobExecutor` → `QueuePoller` + `MetricsService`.
+
+### How & Why
+- **`HandlerRegistry.java`**: `ConcurrentHashMap<String, Consumer<Job>>` maps job type strings to handler functions. Built-in handlers: `email.send`, `report.generate`, `notification.push`, `data.export`, `test`. New handlers added via `register(type, handler)` — no executor changes needed.
+  - *Why*: Open/Closed principle — add new job types without touching the execution engine.
+- **`JobExecutor.java`**: Fetches job from DB, validates status is not already terminal, marks `RUNNING`, delegates to `HandlerRegistry`, marks `COMPLETED`. Tracks `AtomicInteger activeCount` for graceful shutdown coordination.
+  - *Why*: Centralises all execution state transitions. The poller never touches the DB directly.
+- **`QueuePoller.java`**: `@Scheduled(fixedDelay=100)` polls `WorkerRedisClient.pop()`, submits to `CachedThreadPool` (Java 17 compatible — replaced `Thread.ofVirtual()` which requires Java 21).
+  - *Why*: 100ms poll rate gives sub-200ms job pickup latency without busy-waiting. Thread pool bounded by JVM heap, not OS threads.
+- **`MetricsService.java`**: Micrometer `counter("job.completions")`, `timer("job.execution.duration")`, `gauge("queue.depth")`, `gauge("worker.active_jobs")`.
+- **`WorkerConfig.java`**: `@EnableScheduling` + `RedisTemplate<String,String>` bean.
+
+**Fix**: Replaced `Executors.newThreadPerTaskExecutor(Thread.ofVirtual()...)` with `Executors.newCachedThreadPool()` — Java 17 does not support virtual threads without `--enable-preview`.
+
+---
+
+## WEEK 9: REST API & Controllers
+
+### What
+Full REST API for job submission and status in `submission-service`, worker diagnostics in `worker-service`.
+
+### How & Why
+- **`JobSubmitRequest`** (record): `@NotBlank type`, `@NotNull payload`, `@Min/@Max priority`, `@Min/@Max maxRetries`, `idempotencyKey`, `timeoutMs`. Default values applied via `effectivePriority()` / `effectiveMaxRetries()` / `effectiveTimeout()` methods.
+- **`JobController`**: `POST /api/v1/jobs` → 202 Accepted. `GET /api/v1/jobs/{id}` → 200. `GET /api/v1/jobs/ping` → pong.
+- **`JobSubmissionService`**: Generates idempotency key if absent → `IdempotencyGuard.checkAndRegister()` → `Job.create()` → `JobRepository.save()` → `RedisQueueClient.enqueue()`.
+- **`GlobalExceptionHandler`**: RFC 7807 `ProblemDetail` for `JobNotFoundException → 404`, `DuplicateJobException → 409`, `MethodArgumentNotValidException → 400`, `Exception → 500`.
+- **`WorkerController`**: `GET /api/v1/worker/status` — queue depths per priority + active job count. `GET /api/v1/worker/ping`.
+- **`OpenApiConfig`**: Configures SpringDoc `OpenAPI` bean with API title, description, contact, license, server URLs.
+- **Swagger UI**: Available at `/swagger-ui.html` on both ports (302 redirect to `/swagger-ui/index.html`).
+
+---
+
+## WEEK 10: Eventing + Outbox Pattern
+
+### How & Why
+- **`OutboxEvent`** (record): Maps `outbox` table columns.
+- **`OutboxPoller`**: `@Scheduled(fixedDelay=1000)` — queries `outbox WHERE published=FALSE LIMIT 100`, publishes each to Kafka topic `job.events`, marks `published=TRUE`. `writeEvent()` method for writing events within a job transaction.
+  - *Why*: Transactional outbox guarantees at-least-once delivery without distributed transactions. The job save and the event write happen in the same JDBC connection.
+- **`JobEventConsumer`**: `@KafkaListener(topics="job.events", groupId="worker-group")` — routes to `handleJobCompleted`, `handleJobFailed`, `handleJobSubmitted`.
+- **Kafka config**: Producer `StringSerializer`, consumer `earliest` offset, `worker-group`.
+
+---
+
+## WEEK 11: Observability
+
+### How & Why
+- **`prometheus/prometheus.yml`**: Scrapes `/actuator/prometheus` on both services via `host.docker.internal`.
+- **`logback-spring.xml`**: Pattern layout console appender with `DEBUG` for `com.jobqueue` package, `INFO` root.
+- **`application.yaml` both services**: `management.endpoints.web.exposure.include: health,info,prometheus,metrics`, `show-details: always`.
+
+---
+
+## WEEK 12: Testing & Verification
+
+### What
+End-to-end smoke test script covering all critical API paths.
+
+### How & Why
+- **`scripts/smoke-test.sh`**: 10 test groups, 16 individual checks:
+  1. Health endpoints (submission + worker)
+  2. Swagger UI (both, following 302 redirect)
+  3. API docs JSON
+  4. Home pages
+  5. Prometheus metrics
+  6. Ping endpoints
+  7. Job submission (POST → 202)
+  8. Job status lookup (GET → 200)
+  9. Idempotency (duplicate key → 409)
+  10. Validation (missing type → 400)
+  11. Worker status (queue depths + active count)
+- **Result**: 16/16 PASSED ✅
+- **Build**: `mvn clean install -DskipTests` ✅ (3.2s)
+- **Tests**: `mvn test` ✅ (all passing)
+- **`Makefile`**: Added `smoke`, `infra-up`, `infra-down`, `help` targets.
+
+

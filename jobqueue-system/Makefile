@@ -1,48 +1,61 @@
-.PHONY: build start stop restart logs status clean
+# ============================================================
+# Makefile — Distributed Job Scheduler
+# ============================================================
 
-## ── Infrastructure ─────────────────────────────────────────────────────────
-infra-up:
-	docker compose up -d
-	@echo "✅  Infrastructure up (PostgreSQL :5435, Redis :6379, Kafka :9092)"
+SHELL := /bin/bash
+ROOT  := $(shell pwd)
 
-infra-down:
-	docker compose down
-	@echo "✅  Infrastructure stopped"
+.PHONY: help build test start stop status smoke clean infra-up infra-down
 
-## ── Build ───────────────────────────────────────────────────────────────────
+help:
+	@echo ""
+	@echo "  Distributed Job Scheduler — Make Targets"
+	@echo "  ─────────────────────────────────────────"
+	@echo "  make build       Build all modules (skip tests)"
+	@echo "  make test        Run all unit tests"
+	@echo "  make infra-up    Start Docker infrastructure (PG, Redis, Kafka)"
+	@echo "  make infra-down  Stop Docker infrastructure"
+	@echo "  make start       Kill stale ports → build → start all services"
+	@echo "  make stop        Stop all running services"
+	@echo "  make status      Health check all services"
+	@echo "  make smoke       Run end-to-end smoke tests"
+	@echo "  make clean       Maven clean"
+	@echo ""
+
 build:
-	mvn clean install -DskipTests
-	@echo "✅  All modules built"
+	@echo "── Building all modules..."
+	mvn clean install -DskipTests -q
 
 test:
-	mvn clean test
-	@echo "✅  All tests executed"
+	@echo "── Running tests..."
+	mvn test
 
-## ── Run ─────────────────────────────────────────────────────────────────────
+infra-up:
+	@echo "── Starting infrastructure containers..."
+	docker-compose up -d postgres redis
+	@echo "   Waiting for postgres to be ready..."
+	@sleep 5
+	@echo "   Infrastructure UP"
+
+infra-down:
+	@echo "── Stopping infrastructure containers..."
+	docker-compose down
+
 start:
-	chmod +x start-all.sh && ./start-all.sh
-	@echo "✅  All services started"
+	@chmod +x start-all.sh
+	@./start-all.sh
 
 stop:
-	./start-all.sh --stop
+	@chmod +x start-all.sh
+	@./start-all.sh --stop
 
-restart: stop start
-
-## ── Logs ────────────────────────────────────────────────────────────────────
-logs-submission:
-	tail -f logs/submission-service.log
-
-logs-worker:
-	tail -f logs/worker-service.log
-
-## ── Status ──────────────────────────────────────────────────────────────────
 status:
-	@echo "--- submission-service ---"
-	@curl -s http://localhost:8081/actuator/health | python3 -m json.tool || echo "DOWN"
-	@echo "--- worker-service ---"
-	@curl -s http://localhost:8082/actuator/health | python3 -m json.tool || echo "DOWN"
+	@chmod +x start-all.sh
+	@./start-all.sh --status
 
-## ── Clean ───────────────────────────────────────────────────────────────────
+smoke:
+	@chmod +x scripts/smoke-test.sh
+	@./scripts/smoke-test.sh
+
 clean:
 	mvn clean
-	rm -f logs/*.log .running_pids

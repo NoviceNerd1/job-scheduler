@@ -24,6 +24,14 @@ spring:
 
   kafka:
     bootstrap-servers: "localhost:9092"
+    consumer:
+      group-id: worker-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
   flyway:
     enabled: false
@@ -33,13 +41,40 @@ spring:
 
 server:
   port: 8082
+  shutdown: graceful
+
+spring.lifecycle.timeout-per-shutdown-phase: 30s
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# Resilience4j circuit breaker for webhooks
+resilience4j:
+  circuitbreaker:
+    instances:
+      webhook:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+
+# SpringDoc / Swagger UI
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
 
 logging:
   level:
     com.jobqueue: DEBUG
+    io.github.resilience4j: INFO
