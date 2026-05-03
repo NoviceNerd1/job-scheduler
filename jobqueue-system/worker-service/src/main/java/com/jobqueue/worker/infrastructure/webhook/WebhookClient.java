@@ -45,11 +45,16 @@ public class WebhookClient {
 
         log.info("[WebhookClient] Sending webhook to {} for job {}", url, jobId);
 
-        restClient.post()
+        @SuppressWarnings("null")
+        var entity = restClient.post()
                 .uri(url)
                 .body(payload)
                 .retrieve()
                 .toBodilessEntity();
+
+        if (entity.getStatusCode().isError()) {
+            log.error("[WebhookClient] Webhook failed for job {} with status {}", jobId, entity.getStatusCode());
+        }
 
         log.info("[WebhookClient] Webhook delivered to {} for job {}", url, jobId);
     }
@@ -58,10 +63,9 @@ public class WebhookClient {
      * Fallback invoked when the circuit is open or the call fails.
      * Logs the failure — in production this would store for later retry.
      */
-    @SuppressWarnings("unused")
     public void fallback(String url, String jobId, String eventType, Object result, Exception ex) {
-        log.error("[WebhookClient] Circuit breaker fallback — webhook to {} for job {} failed: {}",
-                url, jobId, ex.getMessage());
-        // TODO: persist to a webhook_retry table for later re-delivery
+        log.error("[WebhookClient] Circuit breaker fallback — Event: {}, Job ID: {}, Result: {}, Target URL: {}, Error: {}",
+                eventType, jobId, result, url, ex.getMessage());
+        // Note: For production, persist to a webhook_retry table for later re-delivery
     }
 }

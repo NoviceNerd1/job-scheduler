@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.core.io.ClassPathResource;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 @Component
 public class RedisQueueClient {
@@ -26,12 +27,14 @@ public class RedisQueueClient {
         renewScript.setResultType(Long.class);
     }
     
+    @SuppressWarnings("null")
     public void enqueue(String jobId, int priority) {
         String queueKey = "queue:priority:" + priority;
         double score = Instant.now().toEpochMilli();
-        redisTemplate.opsForZSet().add(queueKey, jobId, score);
+        Objects.requireNonNull(redisTemplate.opsForZSet()).add(queueKey, jobId, score);
     }
     
+    @SuppressWarnings("null")
     public String pop(String workerId, long leaseTtlMs) {
         String leaseKey = "job:leases";
         
@@ -48,6 +51,7 @@ public class RedisQueueClient {
         return null;
     }
     
+    @SuppressWarnings("null")
     public boolean renewLease(String jobId, String workerId, long ttlMs) {
         String leaseKey = "job:leases";
         Long result = redisTemplate.execute(

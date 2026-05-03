@@ -32,6 +32,7 @@ public class OutboxPoller {
     }
 
     @Scheduled(fixedDelay = 1000)
+    @SuppressWarnings("null")
     public void publishOutboxEvents() {
         List<OutboxEvent> events = jdbcClient.sql("""
                 SELECT id, event_id, aggregate_id, event_type, payload, published, created_at
@@ -57,7 +58,9 @@ public class OutboxPoller {
 
         for (OutboxEvent event : events) {
             try {
-                kafkaTemplate.send(TOPIC, event.aggregateId(), event.payload())
+                String aggregateId = event.aggregateId() != null ? event.aggregateId() : "";
+                String payload = event.payload() != null ? event.payload() : "";
+                kafkaTemplate.send(TOPIC, aggregateId, payload)
                         .whenComplete((result, ex) -> {
                             if (ex != null) {
                                 log.error("[OutboxPoller] Failed to publish event id={}: {}",

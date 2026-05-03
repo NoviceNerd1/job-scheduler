@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextClosedEvent;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 
 /**
@@ -20,7 +21,7 @@ public class GracefulShutdown implements ApplicationListener<ContextClosedEvent>
     private static final long MAX_WAIT_MS = 30_000L;
 
     @Override
-    public void onApplicationEvent(ContextClosedEvent event) {
+    public void onApplicationEvent(@NonNull ContextClosedEvent event) {
         log.info("[GracefulShutdown] Shutdown signal received — stopping lease acquisition");
         QueuePoller.setRunning(false);
 

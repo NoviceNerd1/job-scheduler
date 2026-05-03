@@ -22,6 +22,7 @@ public class WorkerRedisClient {
     private static final String LEASE_KEY = "job:leases";
 
     private final RedisTemplate<String, String> redisTemplate;
+    @SuppressWarnings("rawtypes")
     private final DefaultRedisScript<List> popScript;
     private final DefaultRedisScript<Long> renewScript;
 
@@ -45,6 +46,7 @@ public class WorkerRedisClient {
         for (int priority = 1; priority <= 5; priority++) {
             String queueKey = "queue:priority:" + priority;
             try {
+                @SuppressWarnings("null")
                 List<?> result = redisTemplate.execute(
                         popScript,
                         List.of(queueKey, LEASE_KEY),
@@ -68,6 +70,7 @@ public class WorkerRedisClient {
      */
     public boolean renewLease(String jobId, String workerId, long ttlMs) {
         try {
+            @SuppressWarnings("null")
             Long result = redisTemplate.execute(
                     renewScript,
                     List.of(LEASE_KEY),
@@ -91,6 +94,7 @@ public class WorkerRedisClient {
     /**
      * Report worker heartbeat to Redis with 30-second TTL.
      */
+    @SuppressWarnings("null")
     public void heartbeat(String workerId) {
         redisTemplate.opsForValue().set(
                 "worker:heartbeat:" + workerId,

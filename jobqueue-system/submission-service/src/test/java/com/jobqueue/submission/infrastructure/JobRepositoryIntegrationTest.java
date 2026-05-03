@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class JobRepositoryIntegrationTest {
 
     @Container
+    @SuppressWarnings("resource")
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16")
             .withDatabaseName("testdb")
             .withUsername("test")

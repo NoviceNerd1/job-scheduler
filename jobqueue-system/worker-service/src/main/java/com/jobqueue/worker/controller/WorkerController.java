@@ -1,7 +1,6 @@
 package com.jobqueue.worker.controller;
 
 import com.jobqueue.worker.application.JobExecutor;
-import com.jobqueue.worker.application.MetricsService;
 import com.jobqueue.worker.infrastructure.queue.WorkerRedisClient;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

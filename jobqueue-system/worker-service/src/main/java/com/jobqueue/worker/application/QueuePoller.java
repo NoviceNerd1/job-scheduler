@@ -21,7 +21,6 @@ public class QueuePoller {
     private static final Logger log = LoggerFactory.getLogger(QueuePoller.class);
 
     private static final long LEASE_TTL_MS = 35_000L;   // 35 seconds
-    private static final long HEARTBEAT_TTL_MS = 30_000L;
 
     private final WorkerRedisClient redisClient;
     private final JobExecutor jobExecutor;

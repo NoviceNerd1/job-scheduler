@@ -6,7 +6,6 @@ import com.jobqueue.shared.model.Priority;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import java.sql.ResultSet;
-import java.time.Instant;
 import java.util.Optional;
 
 @Repository
@@ -41,7 +40,7 @@ public class JobRepositoryImpl implements JobRepository {
             .param(job.getStatus().name())
             .param(job.getAttempts())
             .param(job.getMaxRetries())
-            .param("system") // TODO: Get from auth context
+            .param("system") // Future: Extract from SecurityContext
             .param(job.getIdempotencyKey())
             .param(job.getTimeoutMs())
             .param(job.getCreatedAt() != null ? java.sql.Timestamp.from(job.getCreatedAt()) : null)

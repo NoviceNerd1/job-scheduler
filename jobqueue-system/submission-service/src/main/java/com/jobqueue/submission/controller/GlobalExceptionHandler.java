@@ -27,6 +27,7 @@ public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(JobNotFoundException.class)
+    @SuppressWarnings("null")
     public ResponseEntity<ProblemDetail> handleNotFound(JobNotFoundException ex) {
         log.warn("[GlobalExceptionHandler] JobNotFound: {}", ex.getMessage());
         ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
@@ -37,6 +38,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(DuplicateJobException.class)
+    @SuppressWarnings("null")
     public ResponseEntity<ProblemDetail> handleDuplicate(DuplicateJobException ex) {
         log.warn("[GlobalExceptionHandler] DuplicateJob: {}", ex.getMessage());
         ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
@@ -47,6 +49,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
+    @SuppressWarnings("null")
     public ResponseEntity<ProblemDetail> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
@@ -64,6 +67,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
+    @SuppressWarnings("null")
     public ResponseEntity<ProblemDetail> handleGeneral(Exception ex) {
         log.error("[GlobalExceptionHandler] Unhandled exception: {}", ex.getMessage(), ex);
         ProblemDetail detail = ProblemDetail.forStatusAndDetail(

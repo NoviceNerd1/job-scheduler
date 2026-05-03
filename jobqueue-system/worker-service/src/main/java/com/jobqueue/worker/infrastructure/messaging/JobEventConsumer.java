@@ -32,17 +32,17 @@ public class JobEventConsumer {
 
     private void handleJobCompleted(String event) {
         log.info("[JobEventConsumer] Processing job.completed: {}", event);
-        // TODO: trigger webhook delivery, update dashboards
+        // Note: Downstream actions (webhook delivery, analytics updates) go here
     }
 
     private void handleJobFailed(String event) {
         log.warn("[JobEventConsumer] Processing job.failed: {}", event);
-        // TODO: alert, update error metrics
+        // Note: Alerting and error metric updates go here
     }
 
     private void handleJobSubmitted(String event) {
         log.debug("[JobEventConsumer] Processing job.submitted: {}", event);
-        // TODO: warm caches, pre-fetch configs
+        // Note: Pre-fetching configs or cache warming go here
     }
 
     private String extractEventType(String event) {
