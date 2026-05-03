@@ -81,7 +81,13 @@ public class JobExecutor {
             log.error("[JobExecutor] Job {} failed: {}", jobId, e.getMessage(), e);
             handleJobFailure(jobId, e.getMessage());
             long duration = System.currentTimeMillis() - startMs;
-            metricsService.recordJobCompletion(jobId, "failure", duration);
+            // Best effort jobType resolution for metrics
+            String jobType = "unknown";
+            try {
+                Optional<Job> failedJob = findJobById(jobId);
+                if (failedJob.isPresent()) jobType = failedJob.get().getType();
+            } catch (Exception ignored) {}
+            metricsService.recordJobCompletion(jobType, "failure", duration);
         } finally {
             activeCount.decrementAndGet();
             activeJobs.remove(jobId);

@@ -177,4 +177,19 @@ End-to-end smoke test script covering all critical API paths.
 - **Tests**: `mvn test` ✅ (all passing)
 - **`Makefile`**: Added `smoke`, `infra-up`, `infra-down`, `help` targets.
 
+---
+
+## Final Deep Code Analysis & Corrections
+
+### What
+Conducted a deep review of all source files to catch logical bugs and missing integrations that tests did not cover.
+
+### How & Why
+- **Outbox Pattern Missing Transaction**: `JobSubmissionService.submit()` was not calling `OutboxPoller.writeEvent()` and was missing a `@Transactional` annotation.
+  - *Fix*: Injected `OutboxPoller`, added `@Transactional` to `submit()`, and called `writeEvent` inside the same method, ensuring atomic commits of both the job and the outbox event to PostgreSQL.
+- **Outbox Schema Mismatch**: `OutboxPoller` generated SQL referencing `aggregate_type`, but the Flyway schema `V2__create_outbox_table.sql` defined `event_id`.
+  - *Fix*: Updated `OutboxPoller` SQL (both `SELECT` and `INSERT`) and the `OutboxEvent` record to strictly match the deployed V2 schema. Added `java.util.UUID.randomUUID()` generation for the `event_id`.
+- **Metrics High Cardinality Bug**: `JobExecutor` catch block recorded `metricsService.recordJobCompletion(jobId, "failure", duration)`. Passing a UUID as a metric tag value creates infinite cardinality, crashing Prometheus.
+  - *Fix*: Added a safe `findJobById(jobId)` lookup in the catch block to resolve the `jobType` string, and passed `jobType` as the tag value instead.
+
 

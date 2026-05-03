@@ -7,7 +7,7 @@ import java.time.Instant;
  */
 public record OutboxEvent(
         Long id,
-        String aggregateType,
+        String eventId,
         String aggregateId,
         String eventType,
         String payload,

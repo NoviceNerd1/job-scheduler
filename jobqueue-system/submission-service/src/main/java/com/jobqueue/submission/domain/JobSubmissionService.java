@@ -12,6 +12,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+import org.springframework.transaction.annotation.Transactional;
+import com.jobqueue.submission.infrastructure.messaging.OutboxPoller;
+
 /**
  * Application-layer service for job submission.
  * Applies idempotency guard, persists to PostgreSQL, and enqueues into Redis.
@@ -24,13 +27,16 @@ public class JobSubmissionService {
     private final JobRepository jobRepository;
     private final RedisQueueClient redisQueueClient;
     private final IdempotencyGuard idempotencyGuard;
+    private final OutboxPoller outboxPoller;
 
     public JobSubmissionService(JobRepository jobRepository,
                                 RedisQueueClient redisQueueClient,
-                                IdempotencyGuard idempotencyGuard) {
+                                IdempotencyGuard idempotencyGuard,
+                                OutboxPoller outboxPoller) {
         this.jobRepository = jobRepository;
         this.redisQueueClient = redisQueueClient;
         this.idempotencyGuard = idempotencyGuard;
+        this.outboxPoller = outboxPoller;
     }
 
     /**
@@ -38,6 +44,7 @@ public class JobSubmissionService {
      * @return the persisted Job entity
      * @throws DuplicateJobException if the idempotency key has already been used
      */
+    @Transactional
     public Job submit(JobSubmitRequest request) {
         String idempotencyKey = request.idempotencyKey() != null
                 ? request.idempotencyKey()
@@ -62,6 +69,9 @@ public class JobSubmissionService {
         jobRepository.save(job);
         log.info("[JobSubmissionService] Persisted job {} type={} priority={}",
                 job.getJobId(), job.getType(), job.getPriority());
+
+        // 2. Write Outbox Event (in same transaction)
+        outboxPoller.writeEvent(job.getJobId(), "job.submitted", payloadJson);
 
         // 2. Enqueue into Redis priority queue
         redisQueueClient.enqueue(job.getJobId(), job.getPriority().getValue());

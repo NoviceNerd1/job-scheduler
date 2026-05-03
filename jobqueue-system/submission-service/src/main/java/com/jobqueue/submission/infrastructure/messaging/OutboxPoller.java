@@ -34,7 +34,7 @@ public class OutboxPoller {
     @Scheduled(fixedDelay = 1000)
     public void publishOutboxEvents() {
         List<OutboxEvent> events = jdbcClient.sql("""
-                SELECT id, aggregate_type, aggregate_id, event_type, payload, published, created_at
+                SELECT id, event_id, aggregate_id, event_type, payload, published, created_at
                 FROM outbox
                 WHERE published = FALSE
                 ORDER BY created_at ASC
@@ -42,7 +42,7 @@ public class OutboxPoller {
                 """)
                 .query((rs, rowNum) -> new OutboxEvent(
                         rs.getLong("id"),
-                        rs.getString("aggregate_type"),
+                        rs.getString("event_id"),
                         rs.getString("aggregate_id"),
                         rs.getString("event_type"),
                         rs.getString("payload"),
@@ -87,12 +87,13 @@ public class OutboxPoller {
      * Write an outbox event atomically alongside a job operation.
      * Call this from within the same transaction as the job save.
      */
-    public void writeEvent(String aggregateType, String aggregateId, String eventType, String payload) {
+    public void writeEvent(String aggregateId, String eventType, String payload) {
+        String eventId = java.util.UUID.randomUUID().toString();
         jdbcClient.sql("""
-                INSERT INTO outbox (aggregate_type, aggregate_id, event_type, payload, published, created_at)
-                VALUES (?, ?, ?, ?, FALSE, ?)
+                INSERT INTO outbox (event_id, aggregate_id, event_type, payload, published, created_at)
+                VALUES (?, ?, ?, ?::jsonb, FALSE, ?)
                 """)
-                .param(aggregateType)
+                .param(eventId)
                 .param(aggregateId)
                 .param(eventType)
                 .param(payload)
