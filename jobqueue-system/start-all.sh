@@ -12,6 +12,7 @@ set -e
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_DIR="$ROOT_DIR/logs"
 PID_FILE="$ROOT_DIR/.running_pids"
+ENV_FILE="$ROOT_DIR/.env"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 
@@ -19,6 +20,14 @@ log()  { echo -e "${GREEN}[jobqueue]${NC} $*"; }
 warn() { echo -e "${YELLOW}[jobqueue]${NC} $*"; }
 err()  { echo -e "${RED}[jobqueue] ERROR:${NC} $*"; exit 1; }
 info() { echo -e "${CYAN}[jobqueue]${NC} $*"; }
+
+# Source environment variables if .env exists
+if [[ -f "$ENV_FILE" ]]; then
+    info "Sourcing environment variables from .env"
+    set -a
+    source "$ENV_FILE"
+    set +a
+fi
 
 # ---------- Port cleanup helper ----------
 kill_port() {

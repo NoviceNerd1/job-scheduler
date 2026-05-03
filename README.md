@@ -214,15 +214,26 @@ Once the infrastructure and services are running, you can interact with the Job 
 You can submit a job using `curl`. We have built-in worker handlers for `email.send`, `report.generate`, `notification.push`, `data.export`, and `test`.
 
 #### ✉️ Sending a Real Email
-The `email.send` job type supports sending **actual emails** if you configure SMTP credentials. By default, it will simulate the email, but you can enable real delivery by providing your SMTP details (e.g., Gmail App Password) when starting the services:
+The `email.send` job type supports sending **actual emails** if you configure SMTP credentials. 
 
+**Recommended Method: Using `.env` file**
+1. Copy the example environment file:
+   ```bash
+   cp jobqueue-system/.env.example jobqueue-system/.env
+   ```
+2. Open `jobqueue-system/.env` and enter your Gmail credentials (use a **Gmail App Password**).
+3. Start the services (the `start-all.sh` script will automatically load your `.env` file):
+   ```bash
+   ./start-all.sh
+   ```
+
+**Alternative Method: Exporting Variables**
+You can also export them manually in your shell before running the script:
 ```bash
-# 1. Start the worker service with SMTP credentials
 export SMTP_HOST=smtp.gmail.com
 export SMTP_PORT=587
 export SMTP_USERNAME=your.email@gmail.com
 export SMTP_PASSWORD=your-app-password
-
 ./start-all.sh
 ```
 

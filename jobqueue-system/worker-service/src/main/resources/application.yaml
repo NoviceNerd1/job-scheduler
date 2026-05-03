@@ -65,6 +65,9 @@ management:
   endpoint:
     health:
       show-details: always
+  health:
+    mail:
+      enabled: false
 
 # Resilience4j circuit breaker for webhooks
 resilience4j:

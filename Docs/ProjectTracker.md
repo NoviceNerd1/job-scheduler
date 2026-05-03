@@ -69,6 +69,15 @@ This file tracks the overarching phases of the Distributed Job Scheduler. Use th
 - [ ] JMeter / K6 load test scripts.
 - [ ] Chaos test script.
 
+## WEEK 13: REAL-WORLD CONNECTIVITY & SECURITY
+- [x] Implement real Gmail SMTP support in `HandlerRegistry` via `JavaMailSender`.
+- [x] Create `.env` persistent configuration system for secrets (App Passwords).
+- [x] Update `start-all.sh` to automatically source `.env` files.
+- [x] Disable `MailHealthIndicator` to prevent actuator health check collisions.
+- [x] Update `.gitignore` and `.env.example` for secure GitHub publishing.
+- [x] Complete project documentation audit (`README.md`, `ProjectCompletion.md`, `ErrorLog.md`).
+
 ## SECURITY (FUTURE)
 - [ ] Configure Spring Security with JWT / Keycloak.
 - [ ] Vault secrets integration (`VaultSecretRetriever`).
+

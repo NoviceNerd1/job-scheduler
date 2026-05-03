@@ -192,4 +192,19 @@ Conducted a deep review of all source files to catch logical bugs and missing in
 - **Metrics High Cardinality Bug**: `JobExecutor` catch block recorded `metricsService.recordJobCompletion(jobId, "failure", duration)`. Passing a UUID as a metric tag value creates infinite cardinality, crashing Prometheus.
   - *Fix*: Added a safe `findJobById(jobId)` lookup in the catch block to resolve the `jobType` string, and passed `jobType` as the tag value instead.
 
+## WEEK 13: Real SMTP Integration & .env Support
+
+### What
+Implemented real-world email delivery support via Gmail SMTP and introduced a robust `.env` configuration system.
+
+### How & Why
+- **Real Gmail Integration**: Refactored `HandlerRegistry` to use `JavaMailSender` for the `email.send` job type. 
+  - *Why*: Transitioned from simulation to functional delivery. Supported features include dynamic payload parsing for `to`, `subject`, and `body`.
+- **`.env` Configuration System**: Modified `start-all.sh` to source a `.env` file automatically on startup.
+  - *Why*: Environment variables exported in terminals were often lost across different sessions or subshells. The `.env` file provides a single source of truth for secrets like Gmail App Passwords without committing them to version control.
+- **Health Check Hardening**: Disabled `MailHealthIndicator` in Spring Boot Actuator.
+  - *Why*: Spring Boot would mark the entire service as `DOWN` if it couldn't connect to the SMTP server during startup. Since the worker is a multi-purpose engine, it should remain `UP` even if mail connectivity is pending or misconfigured.
+- **GitHub Readiness**: Updated `.gitignore` to protect sensitive files and added `.env.example` as a template for new developers.
+
+
 
