@@ -1,0 +1,6 @@
+com/jobqueue/shared/model/JobStatus$1.class
+com/jobqueue/shared/model/Priority.class
+com/jobqueue/shared/model/Job.class
+com/jobqueue/shared/model/JobStatus.class
+com/jobqueue/shared/util/BackoffCalculator.class
+com/jobqueue/shared/model/Job$JobBuilder.class

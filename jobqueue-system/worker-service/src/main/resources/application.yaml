@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: worker-service
+
+  devtools:
+    livereload:
+      enabled: false
+    restart:
+      enabled: true
+
+  datasource:
+    url: jdbc:postgresql://localhost:5435/jobqueue
+    username: jobqueue
+    password: jobqueue123
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 20000
+      maximum-pool-size: 10
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  kafka:
+    bootstrap-servers: "localhost:9092"
+
+  flyway:
+    enabled: false
+
+  jpa:
+    open-in-view: false
+
+server:
+  port: 8082
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+logging:
+  level:
+    com.jobqueue: DEBUG
