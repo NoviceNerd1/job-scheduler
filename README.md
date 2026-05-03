@@ -193,30 +193,89 @@ make infra-up          # Start Docker infrastructure
 make build             # Compile all modules
 make start             # Start both microservices
 make status            # Check health of both services
-make logs-submission   # Tail submission-service logs
-make logs-worker       # Tail worker-service logs
+make smoke             # Run end-to-end smoke tests
 make stop              # Stop all running services
 make test              # Run all tests
 make clean             # Clean build + logs
+make infra-down        # Stop Docker infrastructure
 ```
 
 ---
 
-## Health Checks
+## How to Use the Scheduler
+
+Once the infrastructure and services are running, you can interact with the Job Scheduler using its REST API or via the Swagger UI.
+
+### Swagger UI (Interactive API Docs)
+- **Submission Service**: [http://localhost:8081/swagger-ui.html](http://localhost:8081/swagger-ui.html)
+- **Worker Service**: [http://localhost:8082/swagger-ui.html](http://localhost:8082/swagger-ui.html)
+
+### Submitting a Sample Job
+You can submit a job using `curl`. We have built-in worker handlers for `email.send`, `report.generate`, `notification.push`, `data.export`, and `test`.
+
+#### ✉️ Sending a Real Email
+The `email.send` job type supports sending **actual emails** if you configure SMTP credentials. By default, it will simulate the email, but you can enable real delivery by providing your SMTP details (e.g., Gmail App Password) when starting the services:
+
+```bash
+# 1. Start the worker service with SMTP credentials
+export SMTP_HOST=smtp.gmail.com
+export SMTP_PORT=587
+export SMTP_USERNAME=your.email@gmail.com
+export SMTP_PASSWORD=your-app-password
+
+./start-all.sh
+```
+
+Then, submit the job using the sample script (which will prompt you to edit the `to` field), or use the curl below:
+
+```bash
+# 2. Submit a job
+JOB_ID=$(curl -s -X POST http://localhost:8081/api/v1/jobs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "email.send",
+    "payload": {
+      "to": "your-real-email@example.com",
+      "subject": "Job scheduler is working",
+      "body": "Hello! The distributed job scheduler successfully processed this job from the queue."
+    },
+    "priority": 1,
+    "maxRetries": 3
+  }' | grep -o '"jobId":"[^"]*"' | cut -d'"' -f4)
+
+echo "Submitted Job ID: $JOB_ID"
+
+# 3. Check the job status
+curl -s "http://localhost:8081/api/v1/jobs/$JOB_ID" | jq .
+```
+
+### Checking Worker Status
+You can view the active job queue depths and worker metrics:
+```bash
+curl -s http://localhost:8082/api/v1/worker/status | jq .
+```
+
+### Automated Smoke Test
+We have included a script that automatically tests the entire flow (health, metrics, idempotency, submission, queue processing):
+```bash
+cd jobqueue-system
+./scripts/smoke-test.sh
+```
+
+---
+
+## Health Checks & Metrics
 
 Once running, verify services are up:
 
 ```bash
-# Submission Service
+# Submission Service Health & Metrics
 curl http://localhost:8081/actuator/health
+curl http://localhost:8081/actuator/prometheus
 
-# Worker Service
+# Worker Service Health & Metrics
 curl http://localhost:8082/actuator/health
-```
-
-Expected response:
-```json
-{"status": "UP"}
+curl http://localhost:8082/actuator/prometheus
 ```
 
 ---
@@ -248,9 +307,10 @@ See [`Docs/ProjectTracker.md`](Docs/ProjectTracker.md) for the full week-by-week
 | Domain Layer (Job, Priority, Status) | ✅ Complete |
 | PostgreSQL Repository (Flyway + JdbcClient) | ✅ Complete |
 | Redis Queue Client (Lua scripts) | ✅ Complete |
-| Worker Execution Engine | 🚧 In Progress |
-| REST API Controllers | 🚧 Pending |
-| Observability (Prometheus/Tracing) | 🚧 Pending |
+| Worker Execution Engine | ✅ Complete |
+| REST API Controllers | ✅ Complete |
+| Observability (Prometheus/Tracing) | ✅ Complete |
+| End-to-End Testing | ✅ Complete |
 
 ---
 

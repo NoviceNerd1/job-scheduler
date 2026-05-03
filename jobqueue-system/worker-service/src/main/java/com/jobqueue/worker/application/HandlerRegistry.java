@@ -20,8 +20,10 @@ public class HandlerRegistry {
     private static final Logger log = LoggerFactory.getLogger(HandlerRegistry.class);
 
     private final Map<String, Consumer<Job>> handlers = new ConcurrentHashMap<>();
+    private final org.springframework.mail.javamail.JavaMailSender mailSender;
 
-    public HandlerRegistry() {
+    public HandlerRegistry(@org.springframework.beans.factory.annotation.Autowired(required = false) org.springframework.mail.javamail.JavaMailSender mailSender) {
+        this.mailSender = mailSender;
         // Register built-in handlers
         register("email.send", this::handleEmailSend);
         register("report.generate", this::handleReportGenerate);
@@ -60,9 +62,44 @@ public class HandlerRegistry {
 
     private void handleEmailSend(Job job) {
         log.info("[Handler:email.send] Sending email for job {} payload={}", job.getJobId(), job.getPayload());
-        // Simulate async email call
+        
+        if (mailSender != null) {
+            try {
+                // Parse basic JSON payload. Example: {"to": "a@b.com", "subject": "Hi", "body": "Hello"}
+                String payload = job.getPayload();
+                String to = extractJsonValue(payload, "to");
+                String subject = extractJsonValue(payload, "subject");
+                String body = extractJsonValue(payload, "body");
+
+                if (to != null) {
+                    org.springframework.mail.SimpleMailMessage message = new org.springframework.mail.SimpleMailMessage();
+                    message.setTo(to);
+                    message.setSubject(subject != null ? subject : "Job Scheduler Notification");
+                    message.setText(body != null ? body : "Your job ran successfully.");
+                    mailSender.send(message);
+                    log.info("[Handler:email.send] Real email sent to {} for job {}", to, job.getJobId());
+                    return;
+                }
+            } catch (Exception e) {
+                log.error("[Handler:email.send] Failed to send real email for job {}: {}", job.getJobId(), e.getMessage());
+                throw new RuntimeException("Email sending failed", e);
+            }
+        } else {
+            log.warn("[Handler:email.send] JavaMailSender not configured. Simulating email send.");
+        }
+
+        // Simulate async email call if mailSender is null or parsing failed
         simulateWork(200);
-        log.info("[Handler:email.send] Email sent for job {}", job.getJobId());
+        log.info("[Handler:email.send] Email simulated for job {}", job.getJobId());
+    }
+
+    private String extractJsonValue(String json, String key) {
+        String search = "\"" + key + "\":\"";
+        int start = json.indexOf(search);
+        if (start == -1) return null;
+        start += search.length();
+        int end = json.indexOf("\"", start);
+        return end == -1 ? null : json.substring(start, end);
     }
 
     private void handleReportGenerate(Job job) {
