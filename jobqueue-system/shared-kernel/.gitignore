@@ -13,30 +13,6 @@ buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
 
-# IDEs
-.idea/
-*.iml
-*.iws
-.vscode/
-.project
-.classpath
-.settings/
-.nb-gradle/
-
-# Logs
-*.log
-logs/
-.running_pids
-
-# Environment & Secrets
-.env
-.env.local
-.env.*.local
-
 # OS
 .DS_Store
 Thumbs.db
-
-# virtual machine crash logs
-hs_err_pid*
-replay_pid*
