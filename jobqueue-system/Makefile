@@ -32,9 +32,9 @@ test:
 
 infra-up:
 	@echo "── Starting infrastructure containers..."
-	docker-compose up -d postgres redis
-	@echo "   Waiting for postgres to be ready..."
-	@sleep 5
+	docker-compose up -d postgres redis zookeeper kafka
+	@echo "   Waiting for infrastructure to be ready..."
+	@sleep 10
 	@echo "   Infrastructure UP"
 
 infra-down:
